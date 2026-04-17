@@ -1,114 +1,116 @@
 import { state, saveToLocalStorage } from "./global.js";
-import { displayToDoItems } from "./todo.js";
 
 export class Notes {
-    constructor(title, description, id) {
-        this.title = title;
-        this.description = description;
-        this.id = id;
-    }
+  constructor(title, description, id) {
+    this.title = title;
+    this.description = description;
+    this.id = id;
+  }
 }
 
 export function addNotes(title, description) {
-    const notes = createNotes(title, description);
-    renderNotes(notes);
-    displayNotes(notes.id);
-    saveToLocalStorage();
+  const notes = createNotes(title, description);
+  renderNotes(notes);
+  displayNotes(notes.id);
+  saveToLocalStorage();
 }
 
 export function createNotes(title, description) {
-    const uid = crypto.randomUUID();
-    const notes = new Notes(title, description, uid);
+  const uid = crypto.randomUUID();
+  const notes = new Notes(title, description, uid);
 
-    state.myNotes.push(notes);
-    return notes;
+  state.myNotes.push(notes);
+  return notes;
 }
 
 export function renderNotes(notes) {
-    const notesUI = document.createElement("div");
-    notesUI.id = notes.id;
+  const notesUI = document.createElement("div");
+  notesUI.id = notes.id;
 
-    const notesButton = document.createElement("button");
-    notesButton.dataset.id = notes.id;
-    notesButton.id = `notesbutton-${notes.id}`;
-    const title = notes.title;
-    notesButton.textContent = title.slice(0, 10);
+  const notesButton = document.createElement("button");
+  notesButton.dataset.id = notes.id;
+  notesButton.id = `notesbutton-${notes.id}`;
+  const title = notes.title;
+  notesButton.textContent = title.slice(0, 10);
 
-    notesButton.addEventListener("click", (e) => {
-        const id = e.currentTarget.dataset.id;
-        displayNotes(id);
+  notesButton.addEventListener("click", (e) => {
+    const id = e.currentTarget.dataset.id;
+    displayNotes(id);
+  });
+
+  const removeButton = document.createElement("button");
+  removeButton.dataset.id = notes.id;
+  removeButton.id = `removebutton-${notes.id}`;
+  removeButton.textContent = "X";
+  removeButton.addEventListener("click", (e) => {
+    const id = e.currentTarget.dataset.id;
+
+    const remainingNotes = state.myNotes.filter((n) => n.id !== id);
+
+    state.myNotes.length = 0;
+    state.myNotes.push(...remainingNotes);
+
+    notesUI.remove();
+    saveToLocalStorage();
+
+    // update project display if needed (lazy import to avoid circular static imports)
+    awaitImportDisplayProject().then((mod) => {
+      if (mod.displayProject) mod.displayProject();
     });
+  });
 
-    const removeButton = document.createElement("button");
-    removeButton.dataset.id = notes.id;
-    removeButton.id = `removebutton-${notes.id}`;
-    removeButton.textContent = "X";
-        removeButton.addEventListener("click", (e) => {
-        const id = e.currentTarget.dataset.id;
+  const updateButton = document.createElement("button");
+  updateButton.dataset.id = notes.id;
+  updateButton.id = `updatebutton-${notes.id}`;
+  updateButton.textContent = "Edit";
 
-        const remainingNotes = state.myNotes.filter((n) => n.id !== id);
+  updateButton.addEventListener("click", () => {
+    openEditForm(notes.id);
+  });
 
-        state.myNotes.length = 0;
-        state.myNotes.push(...remainingNotes);
-
-        notesUI.remove();
-        saveToLocalStorage();
-
-        // update project display if needed (lazy import to avoid circular static imports)
-        awaitImportDisplayProject().then((mod) => {
-            if (mod.displayProject) mod.displayProject();
-        });
-    });
-
-    const updateButton = document.createElement('button');
-    updateButton.dataset.id = notes.id;
-    updateButton.id = `updatebutton-${notes.id}`;
-    updateButton.textContent = "Edit";
-
-    updateButton.addEventListener("click", (e) =>{
-        openEditForm(notes.id);
-    });
-
-    notesUI.appendChild(notesButton);
-    notesUI.appendChild(removeButton);
-    notesUI.appendChild(updateButton);
-    const list = document.querySelector("#notes-list");
-    if (list) list.appendChild(notesUI);
+  notesUI.appendChild(notesButton);
+  notesUI.appendChild(removeButton);
+  notesUI.appendChild(updateButton);
+  const list = document.querySelector("#notes-list");
+  if (list) list.appendChild(notesUI);
 }
 
 export function displayNotes(currentNotesID) {
-    const content = document.getElementById("content");
-    if (!content) return;
-    content.innerHTML = "";
+  const content = document.getElementById("content");
+  if (!content) return;
+  content.innerHTML = "";
 
-    const notesArea = document.createElement("div");
-    notesArea.id = "notesArea";
+  const notesArea = document.createElement("div");
+  notesArea.id = "notesArea";
 
-    const found = state.myNotes.find((n) => n.id === currentNotesID) || { title: "", description: "" };
+  const found = state.myNotes.find((n) => n.id === currentNotesID) || {
+    title: "",
+    description: "",
+  };
 
-    const title = document.createElement("h3");
-    title.id = "notesTitle";
-    title.textContent = found.title;
+  const title = document.createElement("h3");
+  title.id = "notesTitle";
+  title.textContent = found.title;
 
-    const description = document.createElement("div");
-    description.id = "notesDescription";
-    description.textContent = found.description;
+  const description = document.createElement("div");
+  description.id = "notesDescription";
+  description.textContent = found.description;
 
-    notesArea.appendChild(title);
-    notesArea.appendChild(description);
+  notesArea.appendChild(title);
+  notesArea.appendChild(description);
 
-    content.appendChild(notesArea);
+  content.appendChild(notesArea);
 }
 
 export function createNotesForm() {
-    let dialog = document.createElement("dialog");
-    dialog.id = "notesdialog";
+  let dialog = document.createElement("dialog");
+  dialog.id = "notesdialog";
 
-    const notesForm = document.createElement("form");
-    notesForm.id = "notesForm";
-    notesForm.method = "dialog";
+  const notesForm = document.createElement("form");
+  notesForm.id = "notesForm";
+  notesForm.method = "dialog";
 
-    notesForm.innerHTML = `
+  notesForm.innerHTML = `
         <h3> Notes </h3>
         <label for="notesTitle"> Project: </label>
         <input type="text" id="notesTitle">
@@ -120,38 +122,38 @@ export function createNotesForm() {
         <button type="button" id="close-btn">Close</button>
         `;
 
-    dialog.appendChild(notesForm);
-    document.body.appendChild(dialog);
+  dialog.appendChild(notesForm);
+  document.body.appendChild(dialog);
 
-    const closeButton = notesForm.querySelector("#close-btn");
-    closeButton.addEventListener("click", () => {
-        dialog.close();
-    });
+  const closeButton = notesForm.querySelector("#close-btn");
+  closeButton.addEventListener("click", () => {
+    dialog.close();
+  });
 
-    dialog.addEventListener("close", () => {
-        if (dialog.returnValue === "submit") {
-            const title = dialog.querySelector("#notesTitle").value;
-            const description = dialog.querySelector("#notesDescription").value;
+  dialog.addEventListener("close", () => {
+    if (dialog.returnValue === "submit") {
+      const title = dialog.querySelector("#notesTitle").value;
+      const description = dialog.querySelector("#notesDescription").value;
 
-            addNotes(title, description);
-        }
-        dialog.remove();
-    });
-    dialog.showModal();
+      addNotes(title, description);
+    }
+    dialog.remove();
+  });
+  dialog.showModal();
 }
 
-function openEditForm(notesId){
-    const note = state.myNotes.find((n) => n.id === notesId);
-    if(!note) return;
+function openEditForm(notesId) {
+  const note = state.myNotes.find((n) => n.id === notesId);
+  if (!note) return;
 
-    let dialog = document.createElement("dialog");
-    dialog.id = "notesdialog";
+  let dialog = document.createElement("dialog");
+  dialog.id = "notesdialog";
 
-    const form = document.createElement('form');
-    form.id = "notesForm";
-    form.method = "dialog";
+  const form = document.createElement("form");
+  form.id = "notesForm";
+  form.method = "dialog";
 
-    form.innerHTML =`
+  form.innerHTML = `
     <h2> Edit Note <h2>
 
     <label>Title:</label>
@@ -164,36 +166,36 @@ function openEditForm(notesId){
     <button type="button" id="close-btn">Cancel</button>
     `;
 
-    dialog.appendChild(form);
-    document.body.appendChild(dialog);
+  dialog.appendChild(form);
+  document.body.appendChild(dialog);
 
-    form.querySelector("#close-btn").addEventListener("click", ()=>{
-        dialog.close();
-    });
+  form.querySelector("#close-btn").addEventListener("click", () => {
+    dialog.close();
+  });
 
-    dialog.addEventListener("close", () =>{
-        if(dialog.returnValue === "submit"){
-            updateNotes(notesId, form);
-        }
-        dialog.remove();
-    });
-    dialog.showModal();
+  dialog.addEventListener("close", () => {
+    if (dialog.returnValue === "submit") {
+      updateNotes(notesId, form);
+    }
+    dialog.remove();
+  });
+  dialog.showModal();
 }
 
-function updateNotes(id, form){
-    const note = state.myNotes.find((n) => n.id === id);
-    if(!note) return;
+function updateNotes(id, form) {
+  const note = state.myNotes.find((n) => n.id === id);
+  if (!note) return;
 
-    note.title = form.querySelector("#notesTitle").value;
-    note.description = form.querySelector("#notesDescription").value;
+  note.title = form.querySelector("#notesTitle").value;
+  note.description = form.querySelector("#notesDescription").value;
 
-    saveToLocalStorage();
-    displayNotes(id);
+  saveToLocalStorage();
+  displayNotes(id);
 }
 
 function awaitImportDisplayProject() {
-    // lazy import to avoid circular static import issues when modules import each other
-    return import("./project.js").catch(() => ({}));
+  // lazy import to avoid circular static import issues when modules import each other
+  return import("./project.js").catch(() => ({}));
 }
 
 const addNotesButton = document.getElementById("addNotes");
